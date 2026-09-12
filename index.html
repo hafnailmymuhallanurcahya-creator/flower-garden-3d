@@ -13,10 +13,6 @@
     .interactive { pointer-events: auto; }
     .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
   </style>
-  
-  <!-- CDN Three.js versi r128 & OrbitControls yang kompatibel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body class="bg-slate-900">
 
@@ -44,144 +40,139 @@
     </div>
 
     <div class="flex justify-center gap-4 mb-4">
-      <button onclick="waterFlowers()" class="interactive bg-sky-500 hover:bg-sky-600 text-white font-bold px-6 py-3 rounded-full shadow-lg transition flex items-center gap-2">
+      <button id="waterBtn" class="interactive bg-sky-500 hover:bg-sky-600 text-white font-bold px-6 py-3 rounded-full shadow-lg transition flex items-center gap-2">
         <i class="fa-solid fa-droplet"></i> Siram Semua Bunga
       </button>
-      <button onclick="harvestFlowers()" class="interactive bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-full shadow-lg transition flex items-center gap-2">
+      <button id="harvestBtn" class="interactive bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-full shadow-lg transition flex items-center gap-2">
         <i class="fa-solid fa-basket-shopping"></i> Panen Bunga Mekar
       </button>
     </div>
   </div>
 
-  <!-- Script Rendering 3D -->
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const container = document.getElementById('canvas-container');
+  <!-- Script Import Module 3D (Anti-Error & Garansi Jalan) -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
 
-      // 1. Scene, Camera, Renderer
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xe0f2fe); // Langit biru muda
-      scene.fog = new THREE.FogExp2(0xe0f2fe, 0.015);
+    const container = document.getElementById('canvas-container');
 
-      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 8, 15);
+    // 1. Scene, Camera, Renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe0f2fe);
+    scene.fog = new THREE.FogExp2(0xe0f2fe, 0.015);
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.shadowMap.enabled = true;
-      container.appendChild(renderer.domElement);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 8, 15);
 
-      // 2. Controls
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.maxPolarAngle = Math.PI / 2 - 0.05; // Supaya tidak tembus bawah tanah
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
 
-      // 3. Pencahayaan
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambientLight);
+    // 2. Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(10, 20, 10);
-      dirLight.castShadow = true;
-      scene.add(dirLight);
+    // 3. Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
 
-      // 4. Tanah Taman (Ground)
-      const groundGeo = new THREE.PlaneGeometry(50, 50);
-      const groundMat = new THREE.MeshStandardMaterial({ color: 0x4ade80 }); // Hijau rumput
-      const ground = new THREE.Mesh(groundGeo, groundMat);
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      scene.add(ground);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
 
-      // Grid pembantu tanah
-      const grid = new THREE.GridHelper(50, 25, 0x15803d, 0x22c55e);
-      grid.position.y = 0.01;
-      scene.add(grid);
+    // 4. Ground (Rumput)
+    const groundGeo = new THREE.PlaneGeometry(50, 50);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x4ade80 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
 
-      // 5. Membuat Bunga-bunga 3D
-      const flowers = [];
-      const flowerColors = [0xef4444, 0xec4899, 0xa855f7, 0x3b82f6, 0xeab308];
+    const grid = new THREE.GridHelper(50, 25, 0x15803d, 0x22c55e);
+    grid.position.y = 0.01;
+    scene.add(grid);
 
-      function createFlower(x, z) {
-        const group = new THREE.Group();
+    // 5. Generate Bunga 3D
+    const flowers = [];
+    const flowerColors = [0xef4444, 0xec4899, 0xa855f7, 0x3b82f6, 0xeab308];
 
-        // Tangkai
-        const stemGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5);
-        const stemMat = new THREE.MeshStandardMaterial({ color: 0x15803d });
-        const stem = new THREE.Mesh(stemGeo, stemMat);
-        stem.position.y = 0.75;
-        stem.castShadow = true;
-        group.add(stem);
+    function createFlower(x, z) {
+      const group = new THREE.Group();
 
-        // Kelopak Bunga
-        const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-        const petalMat = new THREE.MeshStandardMaterial({ color: color });
-        
-        for (let i = 0; i < 6; i++) {
-          const petalGeo = new THREE.SphereGeometry(0.3, 16, 16);
-          petalGeo.scale(1, 0.3, 1.8);
-          const petal = new THREE.Mesh(petalGeo, petalMat);
-          petal.position.y = 1.5;
-          petal.rotation.y = (i * Math.PI) / 3;
-          petal.castShadow = true;
-          group.add(petal);
-        }
+      const stemGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5);
+      const stemMat = new THREE.MeshStandardMaterial({ color: 0x15803d });
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.y = 0.75;
+      stem.castShadow = true;
+      group.add(stem);
 
-        // Putik Tengah
-        const centerGeo = new THREE.SphereGeometry(0.25, 16, 16);
-        const centerMat = new THREE.MeshStandardMaterial({ color: 0xfde047 });
-        const center = new THREE.Mesh(centerGeo, centerMat);
-        center.position.y = 1.5;
-        group.add(center);
-
-        group.position.set(x, 0, z);
-        scene.add(group);
-        flowers.push(group);
+      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const petalMat = new THREE.MeshStandardMaterial({ color: color });
+      
+      for (let i = 0; i < 6; i++) {
+        const petalGeo = new THREE.SphereGeometry(0.3, 16, 16);
+        petalGeo.scale(1, 0.3, 1.8);
+        const petal = new THREE.Mesh(petalGeo, petalMat);
+        petal.position.y = 1.5;
+        petal.rotation.y = (i * Math.PI) / 3;
+        petal.castShadow = true;
+        group.add(petal);
       }
 
-      // Tanam beberapa bunga secara otomatis
-      for (let i = -6; i <= 6; i += 3) {
-        for (let j = -6; j <= 6; j += 3) {
-          createFlower(i, j);
-        }
+      const centerGeo = new THREE.SphereGeometry(0.25, 16, 16);
+      const centerMat = new THREE.MeshStandardMaterial({ color: 0xfde047 });
+      const center = new THREE.Mesh(centerGeo, centerMat);
+      center.position.y = 1.5;
+      group.add(center);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+      flowers.push(group);
+    }
+
+    for (let i = -6; i <= 6; i += 3) {
+      for (let j = -6; j <= 6; j += 3) {
+        createFlower(i, j);
       }
+    }
 
-      // 6. Animasi Loop
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
+    // 6. Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
 
-        // Animasi bunga berayun tertiup angin
-        const time = Date.now() * 0.002;
-        flowers.forEach((f, idx) => {
-          f.rotation.z = Math.sin(time + idx) * 0.05;
-        });
-
-        renderer.render(scene, camera);
-      }
-      animate();
-
-      // Responsif Layar
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+      const time = Date.now() * 0.002;
+      flowers.forEach((f, idx) => {
+        f.rotation.z = Math.sin(time + idx) * 0.05;
       });
 
-      // Fitur Tombol Interaktif
-      window.waterFlowers = () => {
-        flowers.forEach(f => {
-          f.scale.set(1.2, 1.2, 1.2);
-          setTimeout(() => f.scale.set(1, 1, 1), 300);
-        });
-      };
+      renderer.render(scene, camera);
+    }
+    animate();
 
-      window.harvestFlowers = () => {
-        const coinsEl = document.getElementById('coins');
-        let current = parseInt(coinsEl.innerText);
-        coinsEl.innerText = current + 50;
-      };
+    // Responsive window
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Interaksi Tombol
+    document.getElementById('waterBtn').addEventListener('click', () => {
+      flowers.forEach(f => {
+        f.scale.set(1.2, 1.2, 1.2);
+        setTimeout(() => f.scale.set(1, 1, 1), 300);
+      });
+    });
+
+    document.getElementById('harvestBtn').addEventListener('click', () => {
+      const coinsEl = document.getElementById('coins');
+      let current = parseInt(coinsEl.innerText);
+      coinsEl.innerText = current + 50;
     });
   </script>
 </body>
